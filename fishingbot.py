@@ -7,6 +7,11 @@ from windowcapture import WindowCapture
 from hsvfilter import HsvFilter
 from fishfilter import Filter
 import constants
+import time as time_count
+import random
+
+from nordvpn_switcher import initialize_VPN, rotate_VPN
+instr = initialize_VPN(save = 1, area_input=['Germany'],skip_settings=1)
 
 class FishingBot:
 
@@ -67,7 +72,7 @@ class FishingBot:
     timer_action = time()
 
     bait_time = 2
-    throw_time = 2
+    throw_time = 0
     game_time = 2
 
     # This is the filter parameters, this help to find the right image
@@ -137,7 +142,8 @@ class FishingBot:
         result = cv.matchTemplate(haystack_img, self.needle_img_clock, cv.TM_CCOEFF_NORMED)
 
         min_val, max_val, min_loc, max_loc = cv.minMaxLoc(result)
-        if max_val > 0.9:
+        print(max_val)
+        if max_val > 0.7:
             return True
 
         return False
@@ -181,8 +187,7 @@ class FishingBot:
         crop_img = screenshot[self.FISH_WINDOW_POSITION[1]:self.FISH_WINDOW_POSITION[1]+self.FISH_WINDOW_SIZE[1],
                             self.FISH_WINDOW_POSITION[0]:self.FISH_WINDOW_POSITION[0]+self.FISH_WINDOW_SIZE[0]]
         
-        detect_end_img = screenshot[self.FISH_WINDOW_POSITION[1]:self.FISH_WINDOW_POSITION[1]+self.FISH_WINDOW_SIZE[1],
-                            self.FISH_WINDOW_POSITION[0]:self.FISH_WINDOW_POSITION[0]+self.FISH_WINDOW_SIZE[0]]
+        detect_end_img = screenshot
         crop_img = self.hsv_filter.apply_hsv_filter(crop_img)
 
         cv.putText(crop_img, 'FPS: ' + str(1/(time() - self.loop_time))[:2],
@@ -217,77 +222,55 @@ class FishingBot:
         # State to throw the bait
 
         if self.state == 1:
-            if time() - self.timer_action > self.throw_time:
+            if time() - self.timer_action > 0:
+                time_count.sleep(random.uniform(0.15,0.3))
                 pydirectinput.keyDown('1')
                 pydirectinput.keyUp('1')
                 self.state = 2
                 self.timer_action = time()
+            if time() - self.timer_action > 38+random.randint(1,8):
+                time_count.sleep(random.uniform(0,2.5))
+                self.timer_action = time()
+                self.state = 0
 
         # Delay to start the clicks
 
         if self.state == 2:
             if time() - self.timer_action > self.game_time:
+                time_count.sleep(random.uniform(0,0.5))
                 self.state = 3
                 self.timer_action = time()
 
         # Countdown to finish the state
+        if self.state == 2:
+            if time() - self.timer_action > 38+random.randint(1,8):
+                time_count.sleep(random.uniform(0,2.5))
+                self.timer_action = time()
+                self.state = 0
 
         detected_end = self.detect_minigame(detect_end_img)
+        if detected_end:
+            fail = random.randint(3,10)
+            if fail == 7:
+                time_count.sleep(random.uniform(0.25,0.28))
+            if fail == 5:
+                time_count.sleep(random.uniform(0.15,0.35))
+            time_count.sleep(random.uniform(0.1,0.23))
+            pydirectinput.keyDown('1')
+            pydirectinput.keyUp('1')
+            time_count.sleep(random.uniform(0.2,1.7))
+            if fail == 8:
+                print("fail 8")
+                time_count.sleep(random.uniform(4,9.7))
+            if fail == 9:
+                print("fail 9")
+                time_count.sleep(random.uniform(5,17))
+            if fail == 6:
+                print("fail 6")
+                time_count.sleep(random.uniform(2.0,3.7))
+            self.state = 0
+            self.timer_action = time()
 
-        if self.state == 3:
-
-            if time() - self.timer_action > 15:
-                self.timer_action = time()
-                self.state = 0
-            if time() - self.timer_action > 5 and detected_end is False:
-                self.timer_action = time()
-                self.state = 0
-
-            if self.detect_text_enable and time() - self.timer_action > 1.5:
-                if self.detect_text:
-                    if self.fishfilter.match_with_text(screenshot) is False:
-                        mouse_x = int(self.wincap.offset_x + self.FISH_WINDOW_CLOSE[0])
-                        mouse_y = int(self.wincap.offset_y + self.FISH_WINDOW_CLOSE[1])
-                        pydirectinput.click(x=mouse_x, y=mouse_y, button='left')
-                        pydirectinput.click(x=mouse_x, y=mouse_y, button='left')
-
-                self.detect_text = False
-
-
-        # make the click
-
-        if (time() - self.timer_mouse) > 0.3 and self.state == 3 and detected_end:
-            
-            # Detect the fish            
-
-            square_pos = self.detect(crop_img)
-
-            if square_pos:
-
-                # Recalculate the mouse position with the fish position
-
-                pos_x = square_pos[0]
-                pos_y = square_pos[1]
-
-                center_x = self.FISH_WINDOW_SIZE[0]/2
-                center_y = self.FISH_WINDOW_SIZE[1]/2
-
-                mouse_x = int(pos_x)
-                mouse_y = int(pos_y)
-
-                # Verify if the fish is in range
-
-                d = self.FISH_RANGE**2 - ((center_x-mouse_x)**2 + (center_y-mouse_y)**2)
-
-                # Make the click
-
-                if (d > 0):
-                    self.timer_mouse = time()
-
-                    mouse_x = int(pos_x + self.FISH_WINDOW_POSITION[0] + self.wincap.offset_x)
-                    mouse_y = int(pos_y + self.FISH_WINDOW_POSITION[1] + self.wincap.offset_y)
-
-                    pydirectinput.click(x=mouse_x, y=mouse_y)
 
         '''
         cv.imshow('Minha Janela', crop_img)
